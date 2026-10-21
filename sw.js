@@ -1,5 +1,5 @@
 /* ForensiDent offline support: the app keeps working without internet. */
-const CACHE='forensident-v7';
+const CACHE='forensident-v8';
 const FILES=['./','index.html','fd-sans.woff','fd-mono-500.woff','fd-mono-600.woff','noto-sans-arabic.woff','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.all(FILES.map(f=>c.add(f).catch(()=>{})))).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
