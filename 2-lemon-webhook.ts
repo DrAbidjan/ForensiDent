@@ -2,6 +2,8 @@
 // Supabase › Edge Functions › Deploy a new function › Via editor › name: lemon-webhook › paste this › Deploy
 // Then: function settings › turn OFF "Enforce JWT verification"
 // Secret needed (Edge Functions › Secrets): LEMON_SIGNING_SECRET = the signing secret you set in Lemon Squeezy
+// In Lemon Squeezy › Settings › Webhooks, tick: order_created, order_refunded, subscription_created, subscription_updated,
+// subscription_cancelled, subscription_resumed, subscription_expired, subscription_paused, subscription_unpaused
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const secret = Deno.env.get("LEMON_SIGNING_SECRET") ?? "";
@@ -37,6 +39,19 @@ Deno.serve(async (req) => {
       is_pro: true,
       pro_since: new Date().toISOString(),
       order_id: String(body.data.id),
+    }).eq("id", userId);
+    if (error) return new Response(error.message, { status: 500 });
+  }
+
+  // Monthly and yearly subscriptions: Pro follows the subscription status.
+  // "cancelled" keeps Pro until the paid period ends; Lemon Squeezy then sends "expired".
+  if (typeof event === "string" && event.startsWith("subscription_") && !event.startsWith("subscription_payment")) {
+    const status = body?.data?.attributes?.status;
+    const active = ["on_trial", "active", "past_due", "cancelled"].includes(status);
+    const { error } = await db.from("profiles").update({
+      is_pro: active,
+      order_id: "sub_" + String(body.data.id),
+      ...(active ? { pro_since: new Date().toISOString() } : {}),
     }).eq("id", userId);
     if (error) return new Response(error.message, { status: 500 });
   }
